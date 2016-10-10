@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <script type="application/javascript">
+    var userId = '~';
+    var authorizeWindow;
+    var authorizeUrl;
+    var uaaOrigin;
+
+    window.addEventListener("message", receiveMessage, false);
+
+    window.onload = function () {
+      var postAuthLocation = window.location.href.substring(0, window.location.href.lastIndexOf("/")) + "/postauth.html";
+      authorizeUrl = window.parent.Singular.properties.uaaLocation + "/oauth/authorize?response_type=id_token&client_id=" + window.parent.Singular.properties.clientId + "&prompt=none&redirect_uri=" + encodeURIComponent(postAuthLocation);
+      authorizeWindow = document.getElementById('authorizeFrame').contentWindow;
+      uaaOrigin = getOrigin(window.parent.Singular.properties.uaaLocation);
+
+      var claims = getStoredIdentity();
+      if (claims) {
+        userId = claims.user_id;
+      }
+
+      checkSession();
+      setInterval(checkSession, window.parent.Singular.properties.checkInterval);
+    };
+
+    function afterAuthorize() {
+      var fragment = authorizeWindow.location.hash;
+      var claims;
+
+      if (fragment && fragment.length > 0) claims = getClaims(fragment.substring(1));
+
+      announceIdentity(claims);
+    }
+
+    function announceIdentity(claims) {
+      announceStoredIdentityIfNecessary = function () {}; // prevents repeatedly announcing the stored identity after page reload
+      if (claims) {
+        userId = claims.user_id;
+        storeIdentity(claims);
+        window.parent.Singular.properties.onIdentityChange(claims);
+      } else {
+        userId = '~';
+        clearStoredIdentity();
+        window.parent.Singular.properties.onIdentityChange(null);
+      }
+    }
+
+    function announceStoredIdentityIfNecessary() {
+      announceIdentity(getStoredIdentity());
+    }
+
+    function checkSession() {
+      var sessionFrame = window.parent.Singular.sessionFrame.contentWindow;
+      var sessionState = window.parent.Singular.properties.clientId + ' ' + userId;
+      sessionFrame.postMessage(sessionState, uaaOrigin);
+    }
+
+    function receiveMessage(e) {
+      var status = e.data;
+      if (status === "changed") {
+        clearStoredIdentity();
+        authorizeWindow.location = authorizeUrl;
+      } else if (status === "unchanged") {
+        // this prevents fetching another token on page refresh, and only needs to occur once per page lifetime
+        announceStoredIdentityIfNecessary();
+      } else /* error */ {
+        announceIdentity(null);
+      }
+    }
+
+    function getIdToken(fragment) {
+      var params = fragment.split('&');
+      for (var i in params) {
+        if (params[i].startsWith('id_token=')) {
+          return params[i].substring(9);
+        }
+      }
+    }
+
+    function getClaims(fragment) {
+      var jwt = getIdToken(fragment);
+      if (!jwt) {
+        return null;
+      }
+      var base64Url = jwt.split('.')[1];
+      var base64 = base64Url.replace('-', '+').replace('_', '/');
+      return JSON.parse(window.atob(base64));
+    }
+
+    function getOrigin(url) {
+      try {
+        return origin = /^(\S+?:\/\/[a-z0-9-.]+(:[0-9]+)?)/ig.exec(url)[0] + '/';
+      } catch (err) {
+        return null;
+      }
+    }
+
+    function getStoredIdentity() {
+      if (!localStorage) {
+        return null;
+      }
+      try {
+        return JSON.parse(localStorage.getItem(window.parent.Singular.properties.storageKey));
+      } catch (err) {
+        clearStoredIdentity();
+        return null;
+      }
+    }
+
+    function clearStoredIdentity() {
+      if (localStorage) {
+        localStorage.removeItem(window.parent.Singular.properties.storageKey);
+      }
+    }
+
+    function storeIdentity(claims) {
+      if (localStorage) {
+        localStorage.setItem(window.parent.Singular.properties.storageKey, JSON.stringify(claims));
+      }
+    }
+  </script>
+</head>
+<body>
+<iframe style="display: none;" id="authorizeFrame" src="about:blank"></iframe>
+</body>
+</html>

@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Client</title>
+
+  <script type="application/javascript" src="singular/singular.js"></script>
+
+  <script type="application/javascript">
+    window.onload = function () {
+      Singular.init({
+        clientId: "cf",
+        onIdentityChange: function (identity) {
+          if (identity) {
+            console.log('User ' + identity.user_name + ' logged in');
+            console.log(identity);
+            document.getElementById('message').innerHTML = '<strong>' + identity.user_name + '</strong><br>logged in since ' + new Date(identity.auth_time * 1000).toString();
+          }
+          else {
+            console.log('User logged out');
+            document.getElementById('message').innerHTML = 'Click <a href="' + Singular.properties.uaaLocation + '" target="_blank">here</a> to log in';
+          }
+        }
+      });
+    };
+  </script>
+</head>
+<body>
+<div id="message"></div>
+</body>
+</html>
