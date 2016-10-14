@@ -13,7 +13,6 @@
 package org.cloudfoundry.identity.uaa.provider.saml;
 
 import org.apache.commons.httpclient.params.HttpClientParams;
-import org.apache.commons.httpclient.protocol.ProtocolSocketFactory;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.http.client.utils.URIBuilder;
@@ -191,8 +190,6 @@ public class SamlIdentityProviderConfigurator implements InitializingBean {
     protected FixedHttpMetaDataProvider getFixedHttpMetaDataProvider(SamlIdentityProviderDefinition def,
                                                                      Timer dummyTimer,
                                                                      HttpClientParams params) throws ClassNotFoundException, MetadataProviderException, URISyntaxException, InstantiationException, IllegalAccessException {
-        Class<ProtocolSocketFactory> socketFactory;
-        socketFactory = (Class<ProtocolSocketFactory>) Class.forName(def.getSocketFactoryClassName());
         ExtendedMetadata extendedMetadata = new ExtendedMetadata();
         extendedMetadata.setAlias(def.getIdpEntityAlias());
         RestTemplate template = new RestTemplate(UaaHttpRequestUtils.createRequestFactory(def.isSkipSslValidation()));
@@ -200,7 +197,6 @@ public class SamlIdentityProviderConfigurator implements InitializingBean {
             FixedHttpMetaDataProvider.buildProvider(dummyTimer, getClientParams(),
                                                     adjustURIForPort(def.getMetaDataLocation()),
                                                     template);
-        fixedHttpMetaDataProvider.setSocketFactory(socketFactory.newInstance());
         return fixedHttpMetaDataProvider;
     }
 
