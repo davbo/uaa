@@ -21,6 +21,7 @@ import org.cloudfoundry.identity.uaa.constants.OriginKeys;
 import org.cloudfoundry.identity.uaa.provider.IdentityProvider;
 import org.cloudfoundry.identity.uaa.provider.IdentityProviderProvisioning;
 import org.cloudfoundry.identity.uaa.provider.SamlIdentityProviderDefinition;
+import org.cloudfoundry.identity.uaa.util.UaaHttpRequestUtils;
 import org.cloudfoundry.identity.uaa.zone.IdentityZone;
 import org.cloudfoundry.identity.uaa.zone.IdentityZoneHolder;
 import org.opensaml.saml2.metadata.provider.MetadataProviderException;
@@ -29,6 +30,7 @@ import org.springframework.beans.factory.InitializingBean;
 import org.springframework.security.saml.metadata.ExtendedMetadata;
 import org.springframework.security.saml.metadata.ExtendedMetadataDelegate;
 import org.springframework.util.StringUtils;
+import org.springframework.web.client.RestTemplate;
 
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -193,7 +195,11 @@ public class SamlIdentityProviderConfigurator implements InitializingBean {
         socketFactory = (Class<ProtocolSocketFactory>) Class.forName(def.getSocketFactoryClassName());
         ExtendedMetadata extendedMetadata = new ExtendedMetadata();
         extendedMetadata.setAlias(def.getIdpEntityAlias());
-        FixedHttpMetaDataProvider fixedHttpMetaDataProvider = FixedHttpMetaDataProvider.buildProvider(dummyTimer, getClientParams(), adjustURIForPort(def.getMetaDataLocation()));
+        RestTemplate template = new RestTemplate(UaaHttpRequestUtils.createRequestFactory(def.isSkipSslValidation()));
+        FixedHttpMetaDataProvider fixedHttpMetaDataProvider =
+            FixedHttpMetaDataProvider.buildProvider(dummyTimer, getClientParams(),
+                                                    adjustURIForPort(def.getMetaDataLocation()),
+                                                    template);
         fixedHttpMetaDataProvider.setSocketFactory(socketFactory.newInstance());
         return fixedHttpMetaDataProvider;
     }
